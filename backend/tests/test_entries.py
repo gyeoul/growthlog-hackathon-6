@@ -112,7 +112,7 @@ def test_migrations_are_idempotent_and_incremental(tmp_path):
 
     with db.session(path) as conn:
         versions = [r[0] for r in conn.execute("SELECT version FROM schema_version ORDER BY version")]
-    assert versions == [1, 2]
+    assert versions == list(range(1, len(db.MIGRATIONS) + 1))
 
     # An older database (v1 only) gains the new table without losing rows.
     old = str(tmp_path / "old.db")

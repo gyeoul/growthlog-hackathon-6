@@ -121,6 +121,15 @@ To start over: stop the server and delete `backend/app.db*`.
 | `GET` | `/api/entries/{id}` | Read one |
 | `PUT` | `/api/entries/{id}` | Update `{title, content}` |
 | `DELETE` | `/api/entries/{id}` | Delete → `204` |
+| `GET` / `PUT` | `/api/semester` | Semester period `{start_date, end_date}` |
+| `GET` / `POST` | `/api/courses` | Courses `{name, credits, total_lectures, done_lectures, minutes_per_lecture}` |
+| `PUT` / `DELETE` | `/api/courses/{id}` | Update / delete (cascades to its deadlines and blocks) |
+| `GET` / `POST` | `/api/deadlines` | Deadlines `{course_id, kind: assignment\|attendance\|exam, title, due_date}` |
+| `DELETE` | `/api/deadlines/{id}` | Delete |
+| `GET` / `PUT` | `/api/availability` | Weekly free time `{slots: [{weekday 0=Mon, start_time, end_time}]}`, replaced as a whole |
+| `GET` | `/api/plan?start=&end=` | Timetable blocks in a date range (both optional) |
+| `POST` | `/api/plan/generate` | Re-plan from `{today, now}`; finished and past blocks are kept |
+| `PATCH` | `/api/plan/blocks/{id}` | `{done}` check-off |
 | `GET` | `/api/auth/google/login` | Redirect to Google (sets `oauth_state`) |
 | `GET` | `/api/auth/google/callback` | Code exchange, domain check, session issue |
 | `GET` | `/api/auth/session` | `{user: … \| null}` — never 401s |
@@ -128,6 +137,23 @@ To start over: stop the server and delete `backend/app.db*`.
 | `POST` | `/api/auth/logout` | Clears the session cookie |
 
 Protect your own routes by depending on `app.deps.current_user`.
+
+## Semester planner
+
+`app/services/planner.py` turns what is left into dated blocks, with no I/O:
+
+- one task per remaining lecture (due a week before the course's exam, or the
+  semester end), 3 × 60 min per assignment, 1 × 60 min per attendance class,
+  and 2 × 60 min per credit of exam review in the two weeks before the exam
+- tasks fill the weekly free time earliest-deadline-first, skipping time
+  already used by kept blocks and, for today, time that has passed
+- the same course is not stacked back-to-back when another course's task is
+  due within a week of it
+- anything that cannot fit before its deadline is returned as `unscheduled`
+  and shown in the UI, never placed late
+
+Checked-off lecture blocks count toward a course's progress, so re-planning
+never schedules a lecture twice.
 
 ## Layout
 
