@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app import db
 from app.config import Settings, get_settings
-from app.main import app
+from app.main import create_app
 from app.security import SESSION_COOKIE, create_session, read_session
 from app.services import google
 
@@ -24,15 +24,13 @@ def settings(tmp_path) -> Settings:
         cookie_secure=False,
         database_path=str(tmp_path / "test.db"),
     )
-    app.dependency_overrides[get_settings] = lambda: settings
-    db.init_db(settings.database_path)
     yield settings
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def client(settings) -> TestClient:
-    with TestClient(app) as c:
+    # Each test gets its own app pinned to its own database file.
+    with TestClient(create_app(settings)) as c:
         yield c
 
 
@@ -63,11 +61,12 @@ def test_login_redirects_to_google_with_state(client, settings):
     assert res.cookies["oauth_state"]
 
 
-def test_login_redirects_with_error_when_google_not_configured(client, settings):
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        **{**settings.__dict__, "google_client_id": "", "google_client_secret": ""}
+def test_login_redirects_with_error_when_google_not_configured(settings):
+    unconfigured = create_app(
+        Settings(**{**settings.__dict__, "google_client_id": "", "google_client_secret": ""})
     )
-    res = client.get("/api/auth/google/login", follow_redirects=False)
+    with TestClient(unconfigured) as client:
+        res = client.get("/api/auth/google/login", follow_redirects=False)
     assert res.status_code == 303
     assert res.headers["location"] == "/?auth_error=config"
     assert SESSION_COOKIE not in res.cookies

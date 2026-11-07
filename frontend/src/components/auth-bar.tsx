@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getSession, logout, type User } from "@/lib/auth";
+import { logout, type User } from "@/lib/api";
 
 const ERRORS: Record<string, string> = {
   domain: "회원이 아닙니다. @knou.ac.kr 계정으로만 가입할 수 있습니다.",
@@ -11,33 +11,21 @@ const ERRORS: Record<string, string> = {
   config: "로그인 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.",
 };
 
-export function AuthBar() {
+export function AuthBar({ user }: { user: User | null }) {
   const params = useSearchParams();
   const router = useRouter();
 
   // Capture the error on the first render, before the URL is cleaned up.
   const [authError] = useState(() => params.get("auth_error"));
-
-  const [user, setUser] = useState<User | null>(null);
-  const [loaded, setLoaded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    getSession()
-      .then(setUser)
-      .finally(() => setLoaded(true));
-  }, []);
 
   // Drop the error from the URL so a refresh does not repeat stale news.
   useEffect(() => {
     if (params.get("auth_error")) router.replace("/", { scroll: false });
   }, [params, router]);
 
-  const error = authError && !dismissed ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null;
-
-  if (!loaded) {
-    return <div className="h-10" aria-hidden />;
-  }
+  const error =
+    authError && !dismissed ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null;
 
   if (!user) {
     return (
@@ -96,7 +84,8 @@ export function AuthBar() {
         type="button"
         onClick={async () => {
           await logout();
-          setUser(null);
+          // Reload so the session-dependent views re-read the server state.
+          window.location.reload();
         }}
         className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--fg)]"
       >

@@ -1,20 +1,19 @@
 import { Suspense } from "react";
-import { AuthBar } from "@/components/auth-bar";
+import { Dashboard } from "@/components/dashboard";
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-8 p-8">
-      <div className="w-full max-w-sm space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">KNOU 로그인</h1>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 py-12">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">성장 기록</h1>
         <p className="text-sm text-[var(--muted)]">
-          @knou.ac.kr 계정으로만 가입할 수 있습니다.
+          @knou.ac.kr 계정으로 로그인하고, 오늘의 성장을 남겨 두세요.
         </p>
       </div>
-      <div className="w-full max-w-sm">
-        <Suspense fallback={<div className="h-10" />}>
-          <AuthBar />
-        </Suspense>
-      </div>
+
+      <Suspense fallback={<div className="h-10" />}>
+        <Dashboard />
+      </Suspense>
     </main>
   );
 }

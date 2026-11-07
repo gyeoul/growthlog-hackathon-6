@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 from dataclasses import dataclass
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -9,12 +10,32 @@ logger = logging.getLogger(__name__)
 
 _warned_ephemeral_secret = False
 
+# backend/app/config.py -> backend/
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_DATABASE_PATH = BACKEND_DIR / "app.db"
+
 # Real environment variables win: load_dotenv does not override them.
 load_dotenv()
 
 
 def _flag(name: str, default: str = "0") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _database_path() -> str:
+    """Absolute path so the file lands in the same place from any CWD.
+
+    A relative DATABASE_PATH is resolved against the backend directory, not the
+    process working directory, so `uv run uvicorn ...` from the repo root and
+    from `backend/` operate on the same database.
+    """
+    raw = os.getenv("DATABASE_PATH", "").strip()
+    if not raw:
+        return str(DEFAULT_DATABASE_PATH)
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = BACKEND_DIR / path
+    return str(path)
 
 
 @dataclass(frozen=True)
@@ -59,7 +80,7 @@ def get_settings() -> Settings:
         session_ttl=int(os.getenv("SESSION_TTL", "604800")),
         allowed_email_domain=os.getenv("ALLOWED_EMAIL_DOMAIN", "knou.ac.kr").strip().lower(),
         cookie_secure=_flag("COOKIE_SECURE"),
-        database_path=os.getenv("DATABASE_PATH", "app.db"),
+        database_path=_database_path(),
         # Overridable so the full login flow can be exercised against a fake IdP.
         google_authorize_url=os.getenv(
             "GOOGLE_AUTHORIZE_URL", "https://accounts.google.com/o/oauth2/v2/auth"

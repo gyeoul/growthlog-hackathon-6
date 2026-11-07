@@ -59,7 +59,7 @@ this app, not by Google.
 | `SESSION_TTL` | `604800` (7 days) | Session lifetime in seconds |
 | `ALLOWED_EMAIL_DOMAIN` | `knou.ac.kr` | The only domain that can become a member |
 | `COOKIE_SECURE` | `0` | Set `1` behind HTTPS |
-| `DATABASE_PATH` | `app.db` | SQLite file (created on startup) |
+| `DATABASE_PATH` | `backend/app.db` | SQLite file. Relative paths resolve against `backend/`, not the CWD |
 | `GOOGLE_AUTHORIZE_URL` / `GOOGLE_TOKEN_URL` / `GOOGLE_USERINFO_URL` | Google's endpoints | Overridable to exercise the flow against a fake IdP |
 
 Frontend reads `BACKEND_URL` (default `http://127.0.0.1:8000`) for the proxy.
@@ -94,11 +94,33 @@ Membership is decided **only** by the server: the domain check happens after
 the code exchange, compares the whole `@domain` suffix, and requires
 `email_verified`. A client cannot promote itself by editing a request.
 
+## Data storage
+
+Everything a member saves lives in SQLite (`DATABASE_PATH`, default
+`backend/app.db`). The file is created on startup and upgraded in place by
+`MIGRATIONS` in `app/db.py` — an existing database is never recreated, and a
+database written by an older build is adopted rather than rejected.
+
+- WAL journal mode, `foreign_keys=ON`
+- deleting a member cascades to their entries
+- every query is scoped by `user_id`, so one member can never read or delete
+  another's rows
+- `GET /api/stats` returns row counts (login required) if you want to confirm
+  from the UI that something actually persisted
+
+To start over: stop the server and delete `backend/app.db*`.
+
 ## API
 
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/api/health` | Liveness |
+| `GET` | `/api/stats` | Row counts for the logged-in member |
+| `GET` | `/api/entries` | List own entries, newest first |
+| `POST` | `/api/entries` | Create `{title, content}` → `201` |
+| `GET` | `/api/entries/{id}` | Read one |
+| `PUT` | `/api/entries/{id}` | Update `{title, content}` |
+| `DELETE` | `/api/entries/{id}` | Delete → `204` |
 | `GET` | `/api/auth/google/login` | Redirect to Google (sets `oauth_state`) |
 | `GET` | `/api/auth/google/callback` | Code exchange, domain check, session issue |
 | `GET` | `/api/auth/session` | `{user: … \| null}` — never 401s |
@@ -114,15 +136,18 @@ backend/
   app/main.py            app, lifespan DB init
   app/config.py          env settings, .env loading
   app/security.py        HMAC-signed session cookie (stdlib only)
-  app/db.py              SQLite members table
+  app/db.py              SQLite schema migrations + members/entries queries
   app/deps.py            current_user dependency
   app/api/auth.py        OAuth endpoints
+  app/api/entries.py     growth-log CRUD, scoped to the logged-in member
   app/services/google.py token exchange + userinfo
   tests/test_auth.py     auth contract tests, Google mocked
 frontend/
   next.config.ts         /api/* → FastAPI rewrite
-  src/lib/auth.ts        session/logout client helpers
-  src/components/auth-bar.tsx  login button, member card, error states
+  src/lib/api.ts         session + entry client helpers
+  src/components/auth-bar.tsx   login button, member card, error states
+  src/components/entry-log.tsx  create/edit/delete saved entries
+  src/components/dashboard.tsx  session owner for the page
   src/app/page.tsx       page shell
 Makefile                 setup / dev / test / build / clean
 ```
