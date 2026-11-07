@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from app import db
 from app.api.auth import router as auth_router
 from app.api.entries import router as entries_router
+from app.api.studies import router as studies_router
 from app.config import Settings, get_settings
 from app.db import Member
 from app.deps import current_user
@@ -29,6 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(entries_router)
+    app.include_router(studies_router)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

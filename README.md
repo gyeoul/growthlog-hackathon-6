@@ -133,6 +133,11 @@ To start over: stop the server and delete `backend/app.db*`.
 | `GET` | `/api/entries/{id}` | Read one |
 | `PUT` | `/api/entries/{id}` | Update `{title, content}` |
 | `DELETE` | `/api/entries/{id}` | Delete → `204` |
+| `GET` | `/api/studies` | Study list, newest first (public) |
+| `POST` | `/api/studies` | Create `{title, description, capacity}` → `201`, owner auto-joins |
+| `GET` | `/api/studies/{id}` | Study detail + members; `is_member`/`is_owner` if logged in |
+| `POST` | `/api/studies/{id}/join` | Join → `200`; `409` when already joined or full |
+| `DELETE` | `/api/studies/{id}/members/me` | Leave → `200`; owner gets `403` |
 | `GET` | `/api/auth/google/login` | Redirect to Google (sets `oauth_state`) |
 | `GET` | `/api/auth/google/callback` | Code exchange, domain check, session issue |
 | `GET` | `/api/auth/session` | `{user: … \| null}` — never 401s |
@@ -152,8 +157,10 @@ backend/
   app/deps.py            current_user dependency
   app/api/auth.py        OAuth endpoints
   app/api/entries.py     growth-log CRUD, scoped to the logged-in member
+  app/api/studies.py     study create/list/detail/join/leave
   app/services/google.py token exchange + userinfo
   tests/test_auth.py     auth contract tests, Google mocked
+  tests/test_studies.py  study lifecycle, capacity, concurrency, auth
 frontend/
   next.config.ts         /api/* → FastAPI rewrite
   src/lib/api.ts         session + entry client helpers

@@ -53,6 +53,32 @@ MIGRATIONS: tuple[Migration, ...] = (
         CREATE INDEX idx_entries_user ON entries(user_id, updated_at DESC);
         """,
     ),
+    Migration(
+        table="studies",
+        sql="""
+        CREATE TABLE studies (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            title       TEXT NOT NULL,
+            description TEXT NOT NULL,
+            capacity    INTEGER NOT NULL CHECK (capacity BETWEEN 2 AND 100),
+            owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at  TEXT NOT NULL
+        );
+        CREATE INDEX idx_studies_created ON studies(created_at DESC, id DESC);
+        """,
+    ),
+    Migration(
+        table="study_members",
+        sql="""
+        CREATE TABLE study_members (
+            study_id  INTEGER NOT NULL REFERENCES studies(id) ON DELETE CASCADE,
+            user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            joined_at TEXT NOT NULL,
+            PRIMARY KEY (study_id, user_id)
+        );
+        CREATE INDEX idx_study_members_user ON study_members(user_id);
+        """,
+    ),
 )
 
 
@@ -236,6 +262,193 @@ def delete_entry(path: str, user_id: int, entry_id: int) -> bool:
             "DELETE FROM entries WHERE id = ? AND user_id = ?", (entry_id, user_id)
         )
         return cur.rowcount > 0
+
+
+# --- studies -------------------------------------------------------------
+
+
+class StudyRow(TypedDict):
+    id: int
+    title: str
+    description: str
+    capacity: int
+    owner_id: int
+    owner_name: str
+    created_at: str
+    member_count: int
+
+
+class StudyMemberRow(TypedDict):
+    user_id: int
+    name: str
+    joined_at: str
+
+
+_STUDY_COLUMNS = """
+    s.id, s.title, s.description, s.capacity, s.owner_id, s.created_at,
+    u.name AS owner_name, u.email AS owner_email,
+    (SELECT COUNT(*) FROM study_members m WHERE m.study_id = s.id) AS member_count
+"""
+_STUDY_FROM = "studies s JOIN users u ON u.id = s.owner_id"
+
+
+def _study(row: sqlite3.Row) -> StudyRow:
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "description": row["description"],
+        "capacity": row["capacity"],
+        "owner_id": row["owner_id"],
+        "owner_name": _display_name(row["owner_name"], row["owner_email"]),
+        "created_at": row["created_at"],
+        "member_count": row["member_count"],
+    }
+
+
+def _display_name(name: str | None, email: str) -> str:
+    """Public label for a member: their name, else the email local part."""
+    return name or email.split("@", 1)[0]
+
+
+def create_study(
+    path: str, *, owner_id: int, title: str, description: str, capacity: int
+) -> StudyRow:
+    """Insert the study and its owner membership in one transaction."""
+    stamp = now()
+    with session(path) as conn:
+        cur = conn.execute(
+            "INSERT INTO studies (title, description, capacity, owner_id, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (title, description, capacity, owner_id, stamp),
+        )
+        study_id = int(cur.lastrowid)
+        conn.execute(
+            "INSERT INTO study_members (study_id, user_id, joined_at) VALUES (?, ?, ?)",
+            (study_id, owner_id, stamp),
+        )
+        row = conn.execute(
+            f"SELECT {_STUDY_COLUMNS} FROM {_STUDY_FROM} WHERE s.id = ?", (study_id,)
+        ).fetchone()
+    return _study(row)
+
+
+def list_studies(path: str, limit: int = 100) -> list[StudyRow]:
+    with closing(connect(path)) as conn:
+        rows = conn.execute(
+            f"SELECT {_STUDY_COLUMNS} FROM {_STUDY_FROM}"
+            " ORDER BY s.created_at DESC, s.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [_study(row) for row in rows]
+
+
+def get_study(path: str, study_id: int) -> StudyRow | None:
+    with closing(connect(path)) as conn:
+        row = conn.execute(
+            f"SELECT {_STUDY_COLUMNS} FROM {_STUDY_FROM} WHERE s.id = ?", (study_id,)
+        ).fetchone()
+    return _study(row) if row else None
+
+
+def list_study_members(path: str, study_id: int) -> list[StudyMemberRow]:
+    with closing(connect(path)) as conn:
+        rows = conn.execute(
+            "SELECT m.user_id, u.name, u.email, m.joined_at FROM study_members m"
+            " JOIN users u ON u.id = m.user_id"
+            " WHERE m.study_id = ? ORDER BY m.joined_at ASC, m.user_id ASC",
+            (study_id,),
+        ).fetchall()
+    return [
+        {
+            "user_id": row["user_id"],
+            "name": _display_name(row["name"], row["email"]),
+            "joined_at": row["joined_at"],
+        }
+        for row in rows
+    ]
+
+
+def is_study_member(path: str, study_id: int, user_id: int) -> bool:
+    with closing(connect(path)) as conn:
+        row = conn.execute(
+            "SELECT 1 FROM study_members WHERE study_id = ? AND user_id = ?",
+            (study_id, user_id),
+        ).fetchone()
+    return row is not None
+
+
+def join_study(path: str, study_id: int, user_id: int) -> str:
+    """Add a member atomically.
+
+    BEGIN IMMEDIATE takes the write lock before the capacity count, so two
+    concurrent requests cannot both observe a free seat and overfill.
+    Returns "joined", "not_found", "already_member", or "full".
+    """
+    conn = connect(path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        study = conn.execute(
+            "SELECT capacity FROM studies WHERE id = ?", (study_id,)
+        ).fetchone()
+        if study is None:
+            conn.rollback()
+            return "not_found"
+        if conn.execute(
+            "SELECT 1 FROM study_members WHERE study_id = ? AND user_id = ?",
+            (study_id, user_id),
+        ).fetchone():
+            conn.rollback()
+            return "already_member"
+        count = conn.execute(
+            "SELECT COUNT(*) FROM study_members WHERE study_id = ?", (study_id,)
+        ).fetchone()[0]
+        if count >= study["capacity"]:
+            conn.rollback()
+            return "full"
+        conn.execute(
+            "INSERT INTO study_members (study_id, user_id, joined_at) VALUES (?, ?, ?)",
+            (study_id, user_id, now()),
+        )
+        conn.commit()
+        return "joined"
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def leave_study(path: str, study_id: int, user_id: int) -> str:
+    """Remove a member. The owner and non-members cannot leave.
+
+    Returns "left", "not_found", "owner", or "not_member".
+    """
+    conn = connect(path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        study = conn.execute(
+            "SELECT owner_id FROM studies WHERE id = ?", (study_id,)
+        ).fetchone()
+        if study is None:
+            conn.rollback()
+            return "not_found"
+        if study["owner_id"] == user_id:
+            conn.rollback()
+            return "owner"
+        cur = conn.execute(
+            "DELETE FROM study_members WHERE study_id = ? AND user_id = ?",
+            (study_id, user_id),
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            return "not_member"
+        conn.commit()
+        return "left"
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def stats(path: str) -> dict[str, int]:
