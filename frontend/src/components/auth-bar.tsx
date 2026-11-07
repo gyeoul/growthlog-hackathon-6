@@ -89,7 +89,7 @@ export function AuthBar({ user }: { user: User | null }) {
           referrerPolicy="no-referrer"
         />
       ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand-dark">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand-ink">
           {(user.name ?? user.email)[0]}
         </div>
       )}

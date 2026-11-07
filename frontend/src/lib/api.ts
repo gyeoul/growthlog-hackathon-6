@@ -80,6 +80,16 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
+/** Like `request`, but `null` on 401 so anonymous visitors can browse. Never throws for auth. */
+export async function requestOptional<T>(url: string): Promise<T | null> {
+  const res = await fetch(url, { cache: "no-store" });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    throw new Error(describeFailure(res, await res.json().catch(() => null)));
+  }
+  return (await res.json()) as T;
+}
+
 export function listEntries(): Promise<{ entries: Entry[] }> {
   return request<{ entries: Entry[] }>("/api/entries");
 }
@@ -217,4 +227,50 @@ export function setBlockDone(id: number, done: boolean): Promise<PlanBlock> {
 export function isoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// --- studies ---------------------------------------------------------------
+
+export type StudyOwner = { id: number; name: string };
+
+export type Study = {
+  id: number;
+  title: string;
+  description: string;
+  capacity: number;
+  member_count: number;
+  owner: StudyOwner;
+  created_at: string;
+  is_open: boolean;
+};
+
+export type StudyMember = { user_id: number; name: string; joined_at: string };
+
+export type StudyDetail = Study & {
+  members: StudyMember[];
+  is_member: boolean;
+  is_owner: boolean;
+};
+
+export type StudyInput = { title: string; description: string; capacity: number };
+
+/** Public list. Detail is public too, but join/leave/create need a session. */
+export async function listStudies(): Promise<Study[]> {
+  return (await request<{ studies: Study[] }>("/api/studies")).studies;
+}
+
+export function getStudy(id: number): Promise<StudyDetail> {
+  return request<StudyDetail>(`/api/studies/${id}`);
+}
+
+export function createStudy(input: StudyInput): Promise<StudyDetail> {
+  return request<StudyDetail>("/api/studies", { method: "POST", body: json(input) });
+}
+
+export function joinStudy(id: number): Promise<StudyDetail> {
+  return request<StudyDetail>(`/api/studies/${id}/join`, { method: "POST" });
+}
+
+export function leaveStudy(id: number): Promise<StudyDetail> {
+  return request<StudyDetail>(`/api/studies/${id}/members/me`, { method: "DELETE" });
 }

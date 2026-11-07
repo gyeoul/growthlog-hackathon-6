@@ -123,7 +123,7 @@ export function Planner() {
               className={`cursor-pointer rounded-lg px-3.5 py-1.5 font-medium transition-colors ${
                 tab === t
                   ? "bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-                  : "text-muted hover:text-ink"
+                  : "text-muted hover:bg-surface/60 hover:text-ink"
               }`}
             >
               {t === "plan" ? "시간표" : "설정"}
@@ -134,7 +134,7 @@ export function Planner() {
         {data.semester && (
           <span className="chip">
             학기 종료 {data.semester.end_date}
-            <span className="text-brand">· {dDay(data.semester.end_date)}</span>
+            <span className="text-brand-ink">· {dDay(data.semester.end_date)}</span>
           </span>
         )}
 

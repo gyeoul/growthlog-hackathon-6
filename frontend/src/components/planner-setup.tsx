@@ -131,25 +131,32 @@ function CoursesCard(props: Props) {
         </ul>
       )}
       <form
-        className="grid grid-cols-2 gap-2 sm:grid-cols-6"
+        className="grid grid-cols-2 gap-2.5 border-t border-line pt-4 sm:grid-cols-6"
         onSubmit={async (e) => {
           e.preventDefault();
           if (await run(() => createCourse({ ...form, name: form.name.trim() }))) setForm(EMPTY_COURSE);
         }}
       >
-        <input
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-          placeholder="과목명"
-          maxLength={100}
-          className={`${input} col-span-2`}
-          required
-        />
+        <label className="col-span-2 flex flex-col gap-1 sm:col-span-6">
+          <span className="field-label">과목명</span>
+          <input
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder="예: 알고리즘"
+            maxLength={100}
+            className="input"
+            required
+          />
+        </label>
         <NumberField label="학점" value={form.credits} min={1} max={6} onChange={(v) => set("credits", v)} />
         <NumberField label="전체 강의" value={form.total_lectures} min={1} max={30} onChange={(v) => set("total_lectures", v)} />
         <NumberField label="들은 강의" value={form.done_lectures} min={0} max={form.total_lectures} onChange={(v) => set("done_lectures", v)} />
         <NumberField label="강의당 분" value={form.minutes_per_lecture} min={10} max={240} onChange={(v) => set("minutes_per_lecture", v)} />
-        <button type="submit" disabled={busy || !form.name.trim()} className={`${primary} col-span-2 sm:col-span-6`}>
+        <button
+          type="submit"
+          disabled={busy || !form.name.trim()}
+          className={`${primary} col-span-2 self-end sm:col-span-2`}
+        >
           강의 추가
         </button>
       </form>
@@ -159,15 +166,15 @@ function CoursesCard(props: Props) {
 
 function NumberField(props: { label: string; value: number; min: number; max: number; onChange: (v: string) => void }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-      {props.label}
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="field-label">{props.label}</span>
       <input
         type="number"
         value={props.value}
         min={props.min}
         max={props.max}
         onChange={(e) => props.onChange(e.target.value)}
-        className={input}
+        className="input px-2.5 tabular-nums"
         required
       />
     </label>
@@ -236,7 +243,7 @@ function DeadlinesCard(props: Props) {
         <ul className="flex flex-col gap-1.5">
           {props.deadlines.map((d) => (
             <li key={d.id} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-surface-muted">
-              <span className="w-14 shrink-0 text-xs font-semibold tabular-nums text-brand">{dDay(d.due_date)}</span>
+              <span className="w-14 shrink-0 text-xs font-semibold tabular-nums text-brand-ink">{dDay(d.due_date)}</span>
               <span className="min-w-0 flex-1 truncate">
                 {names.get(d.course_id)} · {d.title}
                 <span className="ml-2 text-xs text-muted">
@@ -279,12 +286,21 @@ function AvailabilityCard(props: Props) {
           <p className="text-xs text-muted">예: 평일 21:00–23:00, 토요일 10:00–13:00</p>
         )}
       </div>
+      {rows.length > 0 && (
+        <div className="hidden gap-2 text-xs font-medium text-muted sm:flex">
+          <span className="w-[7.5rem]">요일</span>
+          <span className="w-[8.5rem]">시작</span>
+          <span className="w-2" />
+          <span className="w-[8.5rem]">종료</span>
+        </div>
+      )}
       {rows.map((row, i) => (
         <div key={i} className="flex flex-wrap items-center gap-2">
           <select
+            aria-label="요일"
             value={row.weekday}
             onChange={(e) => update(i, { weekday: Number(e.target.value) })}
-            className={input}
+            className="input w-[7.5rem]"
           >
             {WEEKDAYS.map((label, d) => (
               <option key={d} value={d}>
@@ -292,15 +308,34 @@ function AvailabilityCard(props: Props) {
               </option>
             ))}
           </select>
-          <input type="time" value={row.start_time} onChange={(e) => update(i, { start_time: e.target.value })} className={input} required />
+          <input
+            type="time"
+            aria-label="시작 시간"
+            value={row.start_time}
+            onChange={(e) => update(i, { start_time: e.target.value })}
+            className="input w-[8.5rem] tabular-nums"
+            required
+          />
           <span className="text-sm text-muted">~</span>
-          <input type="time" value={row.end_time} onChange={(e) => update(i, { end_time: e.target.value })} className={input} required />
-          <button type="button" className={subtle} onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>
+          <input
+            type="time"
+            aria-label="종료 시간"
+            value={row.end_time}
+            onChange={(e) => update(i, { end_time: e.target.value })}
+            className="input w-[8.5rem] tabular-nums"
+            required
+          />
+          <button
+            type="button"
+            aria-label={`${WEEKDAYS[row.weekday]}요일 ${row.start_time}–${row.end_time} 삭제`}
+            className={`${subtle} btn-danger`}
+            onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
+          >
             빼기
           </button>
         </div>
       ))}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
         <button
           type="button"
           className={subtle}

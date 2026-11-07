@@ -41,7 +41,7 @@ export function Timetable({ weekStart, courses, blocks, slots, onToggle }: Props
             <div
               key={i}
               className={`border-b border-l border-line py-2.5 text-center text-xs ${
-                isToday ? "bg-brand-soft font-semibold text-brand-dark" : "text-ink-soft"
+                isToday ? "bg-brand-soft font-semibold text-brand-ink" : "text-ink-soft"
               }`}
             >
               {WEEKDAYS[i]} {d.getMonth() + 1}/{d.getDate()}

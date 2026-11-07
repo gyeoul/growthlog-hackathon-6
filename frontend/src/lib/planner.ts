@@ -21,13 +21,13 @@ export const BLOCK_LABELS: Record<PlanBlock["kind"], string> = {
 // the timetable still reads white / black / green rather than a rainbow.
 const COLORS = [
   "#0f5132",
-  "#1f5f6b",
   "#364153",
-  "#3f6212",
   "#7a4a12",
   "#5b3b7a",
-  "#0b6b3a",
+  "#1f5f6b",
   "#7a2e3b",
+  "#3f6212",
+  "#0b6b3a",
 ];
 
 export function courseColor(courses: Course[], courseId: number): string {
