@@ -1,10 +1,13 @@
-# hackerton-11 — Next.js + FastAPI skeleton
+# hackerton-11 — Next.js + FastAPI, Google login restricted to @knou.ac.kr
 
-Minimal starting point for a web app with a Next.js frontend and a FastAPI
-backend. No features beyond a health check; add your own.
+Next.js frontend with a FastAPI backend. Google sign-in is the entry point, and
+only **@knou.ac.kr** addresses become members — enforced on the server, after
+the OAuth token exchange.
 
 ```
 browser ──▶ Next.js :3000 ──(rewrite /api/*)──▶ FastAPI :8000
+                │                                     │
+                └──────── Google OAuth ──────────────┘
 ```
 
 The Next.js rewrite proxies `/api/*` to FastAPI, so the browser only ever talks
@@ -18,41 +21,130 @@ to one origin: no CORS setup, no API base URL in the client bundle.
 ## Run
 
 ```bash
-# 1) Backend
 cd backend
+cp .env.example .env     # fill in the Google pair + SESSION_SECRET
 uv sync
 uv run uvicorn app.main:app --reload --port 8000
 
-# 2) Frontend (separate terminal)
+# separate terminal
 cd frontend
 pnpm install
-pnpm dev                      # http://localhost:3000
+pnpm dev                 # http://localhost:3000
 ```
 
-Or both at once from the repo root:
+Or from the repo root: `make setup` once, then `make dev`.
 
-```bash
-make setup    # uv sync + pnpm install
-make dev      # backend on :8000, frontend on :3000
-```
+## Google OAuth setup
+
+1. Google Cloud Console → **APIs & Services → Credentials → Create OAuth client
+   ID → Web application**.
+2. Add an authorized redirect URI that matches `OAUTH_REDIRECT_URI` exactly:
+   `http://localhost:3000/api/auth/google/callback` (production: your HTTPS
+   origin, same path).
+3. Paste the client ID/secret into `backend/.env`.
+
+No extra scopes or app verification are needed for `openid email profile`
+outside an organization-only project; the domain restriction is implemented by
+this app, not by Google.
 
 ## Configuration
 
-Frontend reads `BACKEND_URL` (default `http://127.0.0.1:8000`) when proxying
-`/api/*` — set it in `frontend/.env.local` to point elsewhere.
+`backend/.env` (all optional except the Google pair):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | OAuth client. Login returns 503 without them. |
+| `OAUTH_REDIRECT_URI` | `http://localhost:3000/api/auth/google/callback` | Must match Google Console exactly |
+| `SESSION_SECRET` | random per process | HMAC key for the session cookie. **Set it in production**, or every restart logs everyone out |
+| `SESSION_TTL` | `604800` (7 days) | Session lifetime in seconds |
+| `ALLOWED_EMAIL_DOMAIN` | `knou.ac.kr` | The only domain that can become a member |
+| `COOKIE_SECURE` | `0` | Set `1` behind HTTPS |
+| `DATABASE_PATH` | `app.db` | SQLite file (created on startup) |
+| `GOOGLE_AUTHORIZE_URL` / `GOOGLE_TOKEN_URL` / `GOOGLE_USERINFO_URL` | Google's endpoints | Overridable to exercise the flow against a fake IdP |
+
+Frontend reads `BACKEND_URL` (default `http://127.0.0.1:8000`) for the proxy.
+
+## Auth flow
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant N as Next.js :3000
+    participant F as FastAPI :8000
+    participant G as Google
+
+    B->>N: GET /api/auth/google/login
+    N->>F: rewrite
+    F-->>B: 307 to Google + oauth_state cookie
+    B->>G: authorize (openid email profile)
+    G-->>B: 302 /api/auth/google/callback?code&state
+    B->>F: callback (via rewrite)
+    F->>F: compare state with cookie
+    F->>G: exchange code for access_token
+    F->>G: GET userinfo
+    alt email verified and @knou.ac.kr
+        F->>F: upsert member in SQLite
+        F-->>B: 303 / + signed httpOnly session cookie
+    else other domain / unverified
+        F-->>B: 303 /?auth_error=domain (no session)
+    end
+```
+
+Membership is decided **only** by the server: the domain check happens after
+the code exchange, compares the whole `@domain` suffix, and requires
+`email_verified`. A client cannot promote itself by editing a request.
+
+## API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/health` | Liveness |
+| `GET` | `/api/auth/google/login` | Redirect to Google (sets `oauth_state`) |
+| `GET` | `/api/auth/google/callback` | Code exchange, domain check, session issue |
+| `GET` | `/api/auth/session` | `{user: … \| null}` — never 401s |
+| `GET` | `/api/auth/me` | Current member, `401` when anonymous |
+| `POST` | `/api/auth/logout` | Clears the session cookie |
+
+Protect your own routes by depending on `app.deps.current_user`.
 
 ## Layout
 
 ```
 backend/
-  app/main.py          FastAPI app; add routers here
-  tests/test_api.py    pytest, uses Starlette's TestClient
+  app/main.py            app, lifespan DB init
+  app/config.py          env settings, .env loading
+  app/security.py        HMAC-signed session cookie (stdlib only)
+  app/db.py              SQLite members table
+  app/deps.py            current_user dependency
+  app/api/auth.py        OAuth endpoints
+  app/services/google.py token exchange + userinfo
+  tests/test_auth.py     auth contract tests, Google mocked
 frontend/
-  next.config.ts       /api/* → FastAPI rewrite
-  src/app/page.tsx     placeholder page
-  src/app/globals.css  Tailwind v4 theme tokens (--bg, --fg, --muted, …)
-Makefile               setup / dev / test / build / clean
+  next.config.ts         /api/* → FastAPI rewrite
+  src/lib/auth.ts        session/logout client helpers
+  src/components/auth-bar.tsx  login button, member card, error states
+  src/app/page.tsx       page shell
+Makefile                 setup / dev / test / build / clean
 ```
+
+## Testing login without Google credentials
+
+`scripts/fake_idp.py` is a local stand-in for Google's OAuth endpoints, so the
+whole flow (state cookie, code exchange, domain check, session) can be driven
+in a browser:
+
+```bash
+make fake-idp   # :8099
+GOOGLE_CLIENT_ID=fake-client GOOGLE_CLIENT_SECRET=fake-secret \
+GOOGLE_AUTHORIZE_URL=http://127.0.0.1:8099/authorize \
+GOOGLE_TOKEN_URL=http://127.0.0.1:8099/token \
+GOOGLE_USERINFO_URL=http://127.0.0.1:8099/userinfo \
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+Then `curl 'http://127.0.0.1:8099/scenario?code=code-outsider'` switches the
+next login to a rejected scenario (`code-member`, `code-case`, `code-outsider`,
+`code-spoof`, `code-unverified`).
 
 ## Test
 

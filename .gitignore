@@ -9,3 +9,7 @@ __pycache__/
 out/
 .DS_Store
 *.log
+
+# local sqlite
+backend/app.db
+*.db
