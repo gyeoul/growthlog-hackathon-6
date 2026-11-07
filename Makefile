@@ -1,4 +1,4 @@
-.PHONY: setup dev api web test build clean
+.PHONY: setup dev api web test build clean fake-idp
 
 setup:            ## install both toolchains
 	cd backend && uv sync
@@ -12,6 +12,9 @@ api:
 
 web:
 	cd frontend && pnpm dev
+
+fake-idp:         ## fake Google IdP on :8099 for login testing without credentials
+	python3 scripts/fake_idp.py
 
 test:
 	cd backend && uv run pytest
