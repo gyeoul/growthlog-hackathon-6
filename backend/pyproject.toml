@@ -1,18 +1,17 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "FastAPI backend for the conversational web app"
+description = "FastAPI backend"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
-    "httpx>=0.28",
-    "pydantic-settings>=2.6",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
+    "httpx2>=0.1",
 ]
 
 [tool.pytest.ini_options]
