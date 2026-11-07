@@ -32,7 +32,19 @@ pnpm install
 pnpm dev                 # http://localhost:3000
 ```
 
-Or from the repo root: `make setup` once, then `make dev`.
+Or from the repo root: `make setup` once, then `make dev` (Ctrl-C stops both).
+
+If `/api/*` returns **500**, the FastAPI process is not running — the Next.js
+proxy has nothing to forward to. `make doctor` reports which side is down and
+whether Google credentials are loaded:
+
+```
+backend  :8000 ok
+frontend :3000 ok
+database : .../backend/app.db
+google   : MISSING (logins redirect to ?auth_error=config)
+```
+
 
 ## Google OAuth setup
 

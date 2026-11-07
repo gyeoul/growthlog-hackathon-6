@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { logout, type User } from "@/lib/api";
+import { logout, startLogin, type User } from "@/lib/api";
 
 const ERRORS: Record<string, string> = {
   domain: "회원이 아닙니다. @knou.ac.kr 계정으로만 가입할 수 있습니다.",
@@ -17,6 +17,7 @@ export function AuthBar({ user }: { user: User | null }) {
 
   // Capture the error on the first render, before the URL is cleaned up.
   const [authError] = useState(() => params.get("auth_error"));
+  const [startError, setStartError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   // Drop the error from the URL so a refresh does not repeat stale news.
@@ -24,28 +25,33 @@ export function AuthBar({ user }: { user: User | null }) {
     if (params.get("auth_error")) router.replace("/", { scroll: false });
   }, [params, router]);
 
-  const error =
-    authError && !dismissed ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null;
+  const shownError =
+    startError ??
+    (authError && !dismissed ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null);
 
   if (!user) {
     return (
       <div className="flex flex-col gap-3">
-        <a
-          href="/api/auth/google/login"
+        <button
+          type="button"
+          onClick={async () => {
+            setDismissed(false);
+            setStartError(await startLogin());
+          }}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium transition hover:border-[var(--accent)]"
         >
           <GoogleMark />
           Google 계정으로 로그인
-        </a>
+        </button>
         <p className="text-center text-xs text-[var(--muted)]">
           한국방송통신대학교 구성원(@knou.ac.kr)만 이용할 수 있습니다.
         </p>
-        {error && (
+        {shownError && (
           <p
             role="alert"
             className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400"
           >
-            <span className="flex-1">{error}</span>
+            <span className="flex-1">{shownError}</span>
             <button
               type="button"
               onClick={() => setDismissed(true)}
