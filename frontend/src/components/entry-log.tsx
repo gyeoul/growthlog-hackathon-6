@@ -92,19 +92,14 @@ export function EntryLog() {
 
   return (
     <section className="flex w-full flex-col gap-5">
-      <form
-        onSubmit={submit}
-        className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
-      >
-        <h2 className="text-sm font-semibold">
-          {editingId === null ? "새 기록" : "기록 수정"}
-        </h2>
+      <form onSubmit={submit} className="card-muted flex flex-col gap-3">
+        <h3 className="card-title">{editingId === null ? "새 기록" : "기록 수정"}</h3>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={200}
           placeholder="제목"
-          className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+          className="input"
         />
         <textarea
           value={content}
@@ -112,44 +107,35 @@ export function EntryLog() {
           maxLength={20000}
           rows={4}
           placeholder="오늘의 성장 기록"
-          className="resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+          className="input resize-y"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={!title.trim() || saving}
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="btn btn-primary"
           >
             {saving ? "저장 중…" : editingId === null ? "저장" : "변경 저장"}
           </button>
           {editingId !== null && (
-            <button
-              type="button"
-              onClick={reset}
-              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm"
-            >
+            <button type="button" onClick={reset} className="btn">
               취소
             </button>
           )}
-          <span className="ml-auto text-xs text-[var(--muted)]">
-            {entries.length}개 저장됨
-          </span>
+          <span className="ml-auto text-xs text-muted">{entries.length}개 저장됨</span>
         </div>
       </form>
 
       {error && (
-        <p
-          role="alert"
-          className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400"
-        >
+        <p role="alert" className="alert-error">
           {error}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-[var(--muted)]">불러오는 중…</p>
+        <p className="text-sm text-muted">불러오는 중…</p>
       ) : entries.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
+        <p className="rounded-2xl border border-dashed border-line-strong px-4 py-10 text-center text-sm text-muted">
           아직 저장된 기록이 없습니다. 첫 기록을 남겨 보세요.
         </p>
       ) : (
@@ -157,12 +143,12 @@ export function EntryLog() {
           {entries.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+              className="rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
             >
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-semibold">{entry.title}</h3>
-                  <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  <p className="mt-0.5 text-xs text-muted">
                     {formatDate(entry.created_at)}
                     {entry.updated_at !== entry.created_at && " · 수정됨"}
                   </p>
@@ -170,20 +156,20 @@ export function EntryLog() {
                 <button
                   type="button"
                   onClick={() => startEdit(entry)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs"
+                  className="btn btn-sm btn-ghost border-line text-ink-soft"
                 >
                   수정
                 </button>
                 <button
                   type="button"
                   onClick={() => void remove(entry)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-600 hover:border-red-500/60 dark:text-red-400"
+                  className="btn btn-sm btn-ghost btn-danger border-line"
                 >
                   삭제
                 </button>
               </div>
               {entry.content && (
-                <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-soft">
                   {entry.content}
                 </p>
               )}

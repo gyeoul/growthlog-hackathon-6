@@ -16,12 +16,10 @@ import {
 } from "@/lib/api";
 import { DEADLINE_LABELS, WEEKDAYS, courseColor, dDay } from "@/lib/planner";
 
-const input =
-  "rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]";
-const primary =
-  "rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40";
-const subtle = "rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs";
-const card = "flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4";
+const input = "input w-auto";
+const primary = "btn btn-primary";
+const subtle = "btn btn-sm border-line text-ink-soft";
+const card = "card flex flex-col gap-3";
 
 type Props = {
   semester: Semester | null;
@@ -75,11 +73,14 @@ function SemesterCard(props: Props) {
         void run(() => saveSemester({ start_date: start, end_date: end }));
       }}
     >
-      <h2 className="text-sm font-semibold">1. 학기 기간</h2>
-      <p className="text-xs text-[var(--muted)]">종료일은 마지막 기말시험 날짜로 넣어 주세요.</p>
+      <div className="flex flex-col gap-1">
+        <p className="eyebrow">Step 1</p>
+        <h2 className="card-title">학기 기간</h2>
+        <p className="text-xs text-muted">종료일은 마지막 기말시험 날짜로 넣어 주세요.</p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={input} required />
-        <span className="text-sm text-[var(--muted)]">~</span>
+        <span className="text-sm text-muted">~</span>
         <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={input} required />
         <button type="submit" disabled={busy || !start || !end} className={primary}>
           저장
@@ -99,21 +100,24 @@ function CoursesCard(props: Props) {
 
   return (
     <section className={card}>
-      <h2 className="text-sm font-semibold">2. 수강 강의</h2>
+      <div className="flex flex-col gap-1">
+        <p className="eyebrow">Step 2</p>
+        <h2 className="card-title">수강 강의</h2>
+      </div>
       {props.courses.length > 0 && (
         <ul className="flex flex-col gap-2">
           {props.courses.map((c) => (
-            <li key={c.id} className="flex items-center gap-2 text-sm">
+            <li key={c.id} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-surface-muted">
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: courseColor(props.courses, c.id) }} />
               <span className="min-w-0 flex-1 truncate">
                 {c.name}
-                <span className="ml-2 text-xs text-[var(--muted)]">
+                <span className="ml-2 text-xs text-muted">
                   {c.credits}학점 · {c.total_lectures}강 중 {c.done_lectures}강 수강 · {c.minutes_per_lecture}분/강
                 </span>
               </span>
               <button
                 type="button"
-                className={`${subtle} text-red-600 dark:text-red-400`}
+                className={`${subtle} btn-danger`}
                 onClick={() => {
                   if (window.confirm(`"${c.name}"과 관련 일정·계획을 모두 삭제할까요?`)) {
                     void run(() => deleteCourse(c.id));
@@ -155,7 +159,7 @@ function CoursesCard(props: Props) {
 
 function NumberField(props: { label: string; value: number; min: number; max: number; onChange: (v: string) => void }) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-[var(--muted)]">
+    <label className="flex flex-col gap-1 text-xs font-medium text-muted">
       {props.label}
       <input
         type="number"
@@ -181,9 +185,12 @@ function DeadlinesCard(props: Props) {
 
   return (
     <section className={card}>
-      <h2 className="text-sm font-semibold">3. 과제·출석수업·시험 일정</h2>
+      <div className="flex flex-col gap-1">
+        <p className="eyebrow">Step 3</p>
+        <h2 className="card-title">과제·출석수업·시험 일정</h2>
+      </div>
       {props.courses.length === 0 ? (
-        <p className="text-xs text-[var(--muted)]">강의를 먼저 추가해 주세요.</p>
+        <p className="text-xs text-muted">강의를 먼저 추가해 주세요.</p>
       ) : (
         <form
           className="flex flex-wrap gap-2"
@@ -228,17 +235,17 @@ function DeadlinesCard(props: Props) {
       {props.deadlines.length > 0 && (
         <ul className="flex flex-col gap-1.5">
           {props.deadlines.map((d) => (
-            <li key={d.id} className="flex items-center gap-2 text-sm">
-              <span className="w-14 shrink-0 text-xs font-medium tabular-nums">{dDay(d.due_date)}</span>
+            <li key={d.id} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-surface-muted">
+              <span className="w-14 shrink-0 text-xs font-semibold tabular-nums text-brand">{dDay(d.due_date)}</span>
               <span className="min-w-0 flex-1 truncate">
                 {names.get(d.course_id)} · {d.title}
-                <span className="ml-2 text-xs text-[var(--muted)]">
+                <span className="ml-2 text-xs text-muted">
                   {DEADLINE_LABELS[d.kind]} · {d.due_date}
                 </span>
               </span>
               <button
                 type="button"
-                className={`${subtle} text-red-600 dark:text-red-400`}
+                className={`${subtle} btn-danger`}
                 onClick={() => void run(() => deleteDeadline(d.id))}
               >
                 삭제
@@ -265,10 +272,13 @@ function AvailabilityCard(props: Props) {
         void run(() => saveAvailability(rows));
       }}
     >
-      <h2 className="text-sm font-semibold">4. 공부 가능한 시간 (매주 반복)</h2>
-      {rows.length === 0 && (
-        <p className="text-xs text-[var(--muted)]">예: 평일 21:00–23:00, 토요일 10:00–13:00</p>
-      )}
+      <div className="flex flex-col gap-1">
+        <p className="eyebrow">Step 4</p>
+        <h2 className="card-title">공부 가능한 시간 (매주 반복)</h2>
+        {rows.length === 0 && (
+          <p className="text-xs text-muted">예: 평일 21:00–23:00, 토요일 10:00–13:00</p>
+        )}
+      </div>
       {rows.map((row, i) => (
         <div key={i} className="flex flex-wrap items-center gap-2">
           <select
@@ -283,7 +293,7 @@ function AvailabilityCard(props: Props) {
             ))}
           </select>
           <input type="time" value={row.start_time} onChange={(e) => update(i, { start_time: e.target.value })} className={input} required />
-          <span className="text-sm text-[var(--muted)]">~</span>
+          <span className="text-sm text-muted">~</span>
           <input type="time" value={row.end_time} onChange={(e) => update(i, { end_time: e.target.value })} className={input} required />
           <button type="button" className={subtle} onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>
             빼기

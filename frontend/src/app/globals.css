@@ -1,41 +1,132 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #ffffff;
-  --fg: #18181b;
-  --muted: #71717a;
-  --border: #e4e4e7;
-  --surface: #fafafa;
-  --accent: #4f46e5;
+/* Growth Log tone: white canvas, near-black ink, one green accent.
+   Palette sampled from growthlog.org (#00962b / #fcfcfc / #222). */
+@theme {
+  --font-sans:
+    "Pretendard Variable", Pretendard, ui-sans-serif, system-ui,
+    -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+
+  --color-canvas: #fcfcfc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f5f5;
+  --color-line: #eaeaea;
+  --color-line-strong: #dcdcdc;
+  --color-ink: #1a1a1a;
+  --color-ink-soft: #3a3a3a;
+  --color-muted: #919191;
+
+  --color-brand: #00962b;
+  --color-brand-dark: #007a23;
+  --color-brand-mid: #4bbe38;
+  --color-brand-soft: #e9f7ec;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fdf1f0;
+  --color-warn: #b45309;
+  --color-warn-soft: #fdf6e9;
+
+  --radius-card: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #09090b;
-    --fg: #fafafa;
-    --muted: #a1a1aa;
-    --border: #27272a;
-    --surface: #18181b;
-    --accent: #6366f1;
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-brand-dark);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
   }
 }
 
-@theme inline {
-  --color-bg: var(--bg);
-  --color-fg: var(--fg);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Shared primitives. Every card, button, input and alert in the app uses these
+   so the spacing, radius and colour story cannot drift per component. */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface p-5;
+  }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family:
-    var(--font-geist-sans),
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Apple SD Gothic Neo",
-    "Noto Sans KR",
-    sans-serif;
+  .card-muted {
+    @apply rounded-2xl border border-line bg-surface-muted p-5;
+  }
+
+  .card-title {
+    @apply text-sm font-semibold tracking-tight text-ink;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold tracking-[0.18em] text-brand uppercase;
+  }
+
+  .field-label {
+    @apply text-xs font-medium text-muted;
+  }
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-line-strong hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply border-brand bg-brand text-white hover:border-brand-dark hover:bg-brand-dark;
+  }
+
+  .btn-sm {
+    @apply rounded-lg px-2.5 py-1 text-xs;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-muted hover:bg-surface-muted hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply text-danger hover:border-danger/30 hover:bg-danger-soft;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink transition-colors outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15;
+  }
+
+  .alert {
+    @apply flex items-start gap-2 rounded-xl border px-4 py-3 text-sm;
+  }
+
+  /* Tailwind v4 cannot @apply a custom component class, so each variant repeats
+     the base properties instead of extending `.alert`. */
+  .alert-error {
+    @apply flex items-start gap-2 rounded-xl border px-4 py-3 text-sm border-danger/25 bg-danger-soft text-danger;
+  }
+
+  .alert-warn {
+    @apply flex items-start gap-2 rounded-xl border px-4 py-3 text-sm border-warn/25 bg-warn-soft text-warn;
+  }
+
+  .alert-success {
+    @apply flex items-start gap-2 rounded-xl border px-4 py-3 text-sm border-brand/25 bg-brand-soft text-brand-dark;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-0.5 text-[11px] font-medium text-ink-soft;
+  }
+
+  .chip-brand {
+    @apply border-brand/20 bg-brand-soft text-brand-dark;
+  }
+
+  .divider {
+    @apply border-t border-line;
+  }
 }

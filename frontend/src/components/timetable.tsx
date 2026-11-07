@@ -32,25 +32,28 @@ export function Timetable({ weekStart, courses, blocks, slots, onToggle }: Props
   const height = hours.length * 60 * PX_PER_MINUTE;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+    <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
       <div className="grid min-w-[640px] grid-cols-[3rem_repeat(7,1fr)]">
-        <div />
-        {days.map((d, i) => (
-          <div
-            key={i}
-            className={`border-b border-l border-[var(--border)] py-2 text-center text-xs ${
-              isos[i] === today ? "font-semibold text-[var(--accent)]" : ""
-            }`}
-          >
-            {WEEKDAYS[i]} {d.getMonth() + 1}/{d.getDate()}
-          </div>
-        ))}
+        <div className="border-b border-line" />
+        {days.map((d, i) => {
+          const isToday = isos[i] === today;
+          return (
+            <div
+              key={i}
+              className={`border-b border-l border-line py-2.5 text-center text-xs ${
+                isToday ? "bg-brand-soft font-semibold text-brand-dark" : "text-ink-soft"
+              }`}
+            >
+              {WEEKDAYS[i]} {d.getMonth() + 1}/{d.getDate()}
+            </div>
+          );
+        })}
 
         <div className="relative" style={{ height }}>
           {hours.map((h, i) => (
             <span
               key={h}
-              className="absolute right-1 -translate-y-1/2 text-[10px] text-[var(--muted)]"
+              className="absolute right-1.5 -translate-y-1/2 text-[10px] tabular-nums text-muted"
               style={{ top: i * 60 * PX_PER_MINUTE }}
             >
               {i === 0 ? "" : `${h}:00`}
@@ -59,11 +62,15 @@ export function Timetable({ weekStart, courses, blocks, slots, onToggle }: Props
         </div>
 
         {days.map((_, i) => (
-          <div key={i} className="relative border-l border-[var(--border)]" style={{ height }}>
+          <div
+            key={i}
+            className={`relative border-l border-line ${isos[i] === today ? "bg-brand/[0.03]" : ""}`}
+            style={{ height }}
+          >
             {hours.slice(1).map((h, j) => (
               <div
                 key={h}
-                className="absolute inset-x-0 border-t border-dashed border-[var(--border)]"
+                className="absolute inset-x-0 border-t border-dashed border-line"
                 style={{ top: (j + 1) * 60 * PX_PER_MINUTE }}
               />
             ))}
@@ -72,8 +79,11 @@ export function Timetable({ weekStart, courses, blocks, slots, onToggle }: Props
               .map((s, j) => (
                 <div
                   key={j}
-                  className="absolute inset-x-0 bg-[var(--accent)]/5"
-                  style={{ top: top(s.start_time), height: top(s.end_time) - top(s.start_time) }}
+                  className="absolute inset-x-0 bg-brand/[0.06]"
+                  style={{
+                    top: top(s.start_time),
+                    height: top(s.end_time) - top(s.start_time),
+                  }}
                 />
               ))}
             {weekBlocks
@@ -84,17 +94,18 @@ export function Timetable({ weekStart, courses, blocks, slots, onToggle }: Props
                   type="button"
                   onClick={() => onToggle(b)}
                   title={`${b.title} ${b.start_time}–${b.end_time} · 눌러서 ${b.done ? "완료 취소" : "완료"}`}
-                  className={`absolute inset-x-0.5 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-[11px] leading-tight text-white transition hover:brightness-110 ${
+                  className={`absolute inset-x-1 cursor-pointer overflow-hidden rounded-lg border-l-[3px] px-1.5 py-1 text-left text-[11px] leading-tight text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition hover:brightness-110 ${
                     b.done ? "opacity-40 line-through" : ""
                   }`}
                   style={{
                     top: top(b.start_time) + 1,
                     height: top(b.end_time) - top(b.start_time) - 2,
                     background: courseColor(courses, b.course_id),
+                    borderLeftColor: "rgba(0,0,0,0.25)",
                   }}
                 >
-                  <span className="block truncate font-medium">{b.title}</span>
-                  <span className="block truncate opacity-80">
+                  <span className="block truncate font-semibold">{b.title}</span>
+                  <span className="block truncate opacity-90">
                     {b.start_time} · {BLOCK_LABELS[b.kind]}
                   </span>
                 </button>

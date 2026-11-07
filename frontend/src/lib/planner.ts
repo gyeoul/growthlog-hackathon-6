@@ -16,8 +16,19 @@ export const BLOCK_LABELS: Record<PlanBlock["kind"], string> = {
   review: "복습",
 };
 
-// Distinct hues that keep white text readable in both themes.
-const COLORS = ["#4f46e5", "#0891b2", "#16a34a", "#d97706", "#db2777", "#7c3aed", "#dc2626"];
+// Muted deep tones, all ≥5:1 against white text (checked for AA).
+// Green leads because the brand is green; the rest stay near the ink axis so
+// the timetable still reads white / black / green rather than a rainbow.
+const COLORS = [
+  "#0f5132",
+  "#1f5f6b",
+  "#364153",
+  "#3f6212",
+  "#7a4a12",
+  "#5b3b7a",
+  "#0b6b3a",
+  "#7a2e3b",
+];
 
 export function courseColor(courses: Course[], courseId: number): string {
   const index = courses.findIndex((c) => c.id === courseId);

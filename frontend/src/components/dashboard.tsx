@@ -18,7 +18,7 @@ export function Dashboard() {
   }, []);
 
   if (!loaded) {
-    return <div className="h-10" aria-hidden />;
+    return <div className="card-muted h-24 animate-pulse" aria-hidden />;
   }
 
   return (
@@ -26,9 +26,15 @@ export function Dashboard() {
       <AuthBar user={user} />
       {user && <Planner />}
       {user && (
-        <details className="group">
-          <summary className="cursor-pointer text-sm font-semibold">성장 기록</summary>
-          <div className="mt-4">
+        <details className="group card p-0">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 [&::-webkit-details-marker]:hidden">
+            <span className="card-title">성장 기록</span>
+            <span className="text-xs text-muted">배운 것을 남겨 두는 곳</span>
+            <span className="ml-auto text-muted transition-transform group-open:rotate-180">
+              ⌄
+            </span>
+          </summary>
+          <div className="border-t border-line p-5">
             <EntryLog />
           </div>
         </details>
