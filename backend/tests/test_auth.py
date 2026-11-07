@@ -68,7 +68,9 @@ def test_login_redirects_with_error_when_google_not_configured(settings):
     with TestClient(unconfigured) as client:
         res = client.get("/api/auth/google/login", follow_redirects=False)
     assert res.status_code == 303
-    assert res.headers["location"] == "/?auth_error=config"
+    assert res.headers["location"] == (
+        "/?auth_error=config&missing=GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET"
+    )
     assert SESSION_COOKIE not in res.cookies
 
 

@@ -8,15 +8,18 @@ const ERRORS: Record<string, string> = {
   domain: "회원이 아닙니다. @knou.ac.kr 계정으로만 가입할 수 있습니다.",
   state: "로그인 요청이 만료되었습니다. 다시 시도해 주세요.",
   google: "구글 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
-  config: "로그인 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.",
+  config:
+    "로그인 설정이 완료되지 않았습니다. backend/.env 에 GOOGLE_CLIENT_ID 와 GOOGLE_CLIENT_SECRET 을 채운 뒤 서버를 재시작하세요.",
 };
 
 export function AuthBar({ user }: { user: User | null }) {
   const params = useSearchParams();
   const router = useRouter();
 
-  // Capture the error on the first render, before the URL is cleaned up.
+  // Capture on the first render: the URL is cleaned up below, and the values
+  // would be gone by the time a later render reads them.
   const [authError] = useState(() => params.get("auth_error"));
+  const [missing] = useState(() => params.get("missing"));
   const [startError, setStartError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -25,9 +28,12 @@ export function AuthBar({ user }: { user: User | null }) {
     if (params.get("auth_error")) router.replace("/", { scroll: false });
   }, [params, router]);
 
+  const baseError =
+    startError ?? (authError ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null);
   const shownError =
-    startError ??
-    (authError && !dismissed ? (ERRORS[authError] ?? "로그인에 실패했습니다.") : null);
+    baseError && !dismissed
+      ? baseError + (authError === "config" && missing ? ` (누락: ${missing})` : "")
+      : null;
 
   if (!user) {
     return (

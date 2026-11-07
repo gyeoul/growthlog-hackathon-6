@@ -10,7 +10,7 @@ from fastapi import APIRouter, Cookie, Depends, Query, Response
 from fastapi.responses import RedirectResponse
 
 from app import db
-from app.config import Settings, get_settings
+from app.config import BACKEND_DIR, Settings, get_settings
 from app.deps import current_user
 from app.schemas import SessionState, User
 from app.security import SESSION_COOKIE, create_session, new_state, read_session
@@ -38,8 +38,22 @@ def google_login(settings: Settings = Depends(get_settings)) -> RedirectResponse
     if not settings.google_configured:
         # This endpoint is only ever opened by a browser, so explain it in the UI
         # instead of rendering a raw JSON error page.
-        logger.error("Login attempted without GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET")
-        return RedirectResponse("/?auth_error=config", status_code=303)
+        missing = [
+            name
+            for name, value in (
+                ("GOOGLE_CLIENT_ID", settings.google_client_id),
+                ("GOOGLE_CLIENT_SECRET", settings.google_client_secret),
+            )
+            if not value
+        ]
+        logger.error(
+            "Login attempted without %s. backend/.env is read as %s",
+            " / ".join(missing),
+            BACKEND_DIR / ".env",
+        )
+        return RedirectResponse(
+            f"/?auth_error=config&missing={','.join(missing)}", status_code=303
+        )
     state = new_state()
     res = RedirectResponse(google.authorize_url(settings, state))
     res.set_cookie(STATE_COOKIE, state, max_age=STATE_TTL, **_cookie(settings))

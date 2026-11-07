@@ -14,8 +14,10 @@ _warned_ephemeral_secret = False
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DATABASE_PATH = BACKEND_DIR / "app.db"
 
-# Real environment variables win: load_dotenv does not override them.
-load_dotenv()
+# Absolute path: `load_dotenv()` with no argument searches the working directory,
+# so starting uvicorn from the repo root silently lost GOOGLE_CLIENT_ID and
+# SESSION_SECRET. Real environment variables still win (override=False).
+load_dotenv(BACKEND_DIR / ".env")
 
 
 def _flag(name: str, default: str = "0") -> bool:
