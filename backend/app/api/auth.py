@@ -6,7 +6,7 @@ never promote itself to a member by editing a request.
 
 import logging
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Cookie, Depends, Query, Response
 from fastapi.responses import RedirectResponse
 
 from app import db
@@ -36,10 +36,10 @@ def _cookie(settings: Settings) -> dict:
 @router.get("/google/login")
 def google_login(settings: Settings = Depends(get_settings)) -> RedirectResponse:
     if not settings.google_configured:
-        raise HTTPException(
-            status_code=503,
-            detail="GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 이 설정되지 않았습니다",
-        )
+        # This endpoint is only ever opened by a browser, so explain it in the UI
+        # instead of rendering a raw JSON error page.
+        logger.error("Login attempted without GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET")
+        return RedirectResponse("/?auth_error=config", status_code=303)
     state = new_state()
     res = RedirectResponse(google.authorize_url(settings, state))
     res.set_cookie(STATE_COOKIE, state, max_age=STATE_TTL, **_cookie(settings))

@@ -8,6 +8,7 @@ const ERRORS: Record<string, string> = {
   domain: "회원이 아닙니다. @knou.ac.kr 계정으로만 가입할 수 있습니다.",
   state: "로그인 요청이 만료되었습니다. 다시 시도해 주세요.",
   google: "구글 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+  config: "로그인 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.",
 };
 
 export function AuthBar() {

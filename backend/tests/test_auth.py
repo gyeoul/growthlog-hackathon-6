@@ -63,12 +63,14 @@ def test_login_redirects_to_google_with_state(client, settings):
     assert res.cookies["oauth_state"]
 
 
-def test_login_503_when_google_not_configured(client, settings):
+def test_login_redirects_with_error_when_google_not_configured(client, settings):
     app.dependency_overrides[get_settings] = lambda: Settings(
         **{**settings.__dict__, "google_client_id": "", "google_client_secret": ""}
     )
     res = client.get("/api/auth/google/login", follow_redirects=False)
-    assert res.status_code == 503
+    assert res.status_code == 303
+    assert res.headers["location"] == "/?auth_error=config"
+    assert SESSION_COOKIE not in res.cookies
 
 
 def test_member_domain_creates_member_and_session(client, monkeypatch):
